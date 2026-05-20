@@ -1,248 +1,286 @@
-'use client'
+"use client";
 
-import { useState } from 'react'
-import { useRouter } from 'next/navigation'
-import { useFlightStore } from '@/store/useFlightStore'
-import { useUserStore } from '@/store/useUserStore'
-import { createClient } from '@/lib/supabase/client'
+import { useMemo, useState, type FormEvent } from "react";
+import { useRouter } from "next/navigation";
+import {
+  ArrowLeftRightIcon,
+  CalendarIcon,
+  PlaneIcon,
+  SearchIcon,
+  ShieldCheckIcon,
+  SparklesIcon,
+  UsersIcon,
+} from "lucide-react";
 
-const AIRPORTS = [
-  { code: 'BOM', name: 'Mumbai' },
-  { code: 'DEL', name: 'Delhi' },
-  { code: 'BLR', name: 'Bangalore' },
-  { code: 'MAA', name: 'Chennai' },
-  { code: 'HYD', name: 'Hyderabad' },
-  { code: 'CCU', name: 'Kolkata' },
-]
+import { AIRPORTS, POPULAR_ROUTES, getAirportLabel } from "@/lib/constants";
+import { cn } from "@/lib/utils";
+import { useFlightStore } from "@/store/useFlightStore";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Calendar } from "@/components/ui/calendar";
+import { Card, CardContent } from "@/components/ui/card";
+import {
+  Field,
+  FieldDescription,
+  FieldGroup,
+  FieldLabel,
+} from "@/components/ui/field";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Separator } from "@/components/ui/separator";
+
+function toDateInputValue(date: Date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function parseInputDate(value: string) {
+  return new Date(`${value}T12:00:00`);
+}
 
 export default function SearchPage() {
-  const router = useRouter()
-  const supabase = createClient()
-  const setSearchQuery = useFlightStore(s => s.setSearchQuery)
-  const user = useUserStore(s => s.user)
-  const resetUser = useUserStore(s => s.reset)
-  const resetFlight = useFlightStore(s => s.reset)
+  const router = useRouter();
+  const setSearchQuery = useFlightStore((state) => state.setSearchQuery);
 
-  const [origin, setOrigin] = useState('BOM')
-  const [destination, setDestination] = useState('DEL')
+  const [origin, setOrigin] = useState("BOM");
+  const [destination, setDestination] = useState("DEL");
   const [date, setDate] = useState(() => {
-    // Default to tomorrow
-    const d = new Date()
-    d.setDate(d.getDate() + 1)
-    return d.toISOString().split('T')[0]
-  })
-  const [passengers, setPassengers] = useState(1)
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    return toDateInputValue(tomorrow);
+  });
+  const [passengers, setPassengers] = useState("1");
+
+  const today = useMemo(() => {
+    const value = new Date();
+    value.setHours(0, 0, 0, 0);
+    return value;
+  }, []);
+  const selectedDate = parseInputDate(date);
+  const sameAirport = origin === destination;
 
   function handleSwap() {
-    setOrigin(destination)
-    setDestination(origin)
+    setOrigin(destination);
+    setDestination(origin);
   }
 
-  function handleSearch(e: React.FormEvent) {
-    e.preventDefault()
-    if (origin === destination) return
-    setSearchQuery({ origin, destination, date, passengers })
-    router.push(`/flights?origin=${origin}&destination=${destination}&date=${date}&passengers=${passengers}`)
-  }
+  function handleSearch(event: FormEvent) {
+    event.preventDefault();
+    if (sameAirport) return;
 
-  async function handleLogout() {
-    await supabase.auth.signOut()
-    resetUser()
-    resetFlight()
-    router.push('/login')
-  }
+    const passengerCount = Number(passengers);
+    setSearchQuery({ origin, destination, date, passengers: passengerCount });
 
-  // Min date = today
-  const today = new Date().toISOString().split('T')[0]
+    const params = new URLSearchParams({
+      origin,
+      destination,
+      date,
+      passengers,
+    });
+    router.push(`/flights?${params.toString()}`);
+  }
 
   return (
-    <main className="min-h-screen bg-gradient-to-br from-blue-600 to-blue-800">
+    <main className="relative overflow-hidden">
+      <section className="mx-auto grid min-h-[calc(100dvh-4rem)] w-full max-w-7xl items-center gap-8 px-4 py-8 sm:px-6 lg:grid-cols-[minmax(0,0.9fr)_minmax(420px,1fr)] lg:px-8">
+        <div className="max-w-2xl">
+          <Badge variant="outline" className="mb-5 border-primary/20 bg-primary/5 text-primary">
+            <SparklesIcon className="size-3" />
+            Startup-grade flight booking
+          </Badge>
+          <h1 className="font-heading text-4xl font-semibold tracking-normal text-foreground sm:text-5xl lg:text-6xl">
+            Plan the next takeoff with less friction.
+          </h1>
+          <p className="mt-5 max-w-xl text-base leading-7 text-muted-foreground sm:text-lg">
+            Search routes, compare premium fares, reserve seats live, and keep every booking organized from one polished dashboard.
+          </p>
 
-      {/* Nav */}
-      <nav className="flex items-center justify-between px-6 py-4 max-w-6xl mx-auto">
-        <div className="flex items-center gap-2">
-          <div className="w-8 h-8 bg-white/20 rounded-lg flex items-center justify-center">
-            <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
-            </svg>
+          <div className="mt-8 grid gap-3 sm:grid-cols-3">
+            {[
+              { label: "Live seats", value: "Realtime", icon: ShieldCheckIcon },
+              { label: "Routes", value: "6 cities", icon: PlaneIcon },
+              { label: "Booking flow", value: "2 steps", icon: UsersIcon },
+            ].map((item) => {
+              const Icon = item.icon;
+              return (
+                <Card key={item.label} className="premium-card">
+                  <CardContent className="flex items-center gap-3 p-4">
+                    <div className="flex size-9 items-center justify-center rounded-lg bg-primary/8 text-primary">
+                      <Icon className="size-4" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-semibold">{item.value}</p>
+                      <p className="text-xs text-muted-foreground">{item.label}</p>
+                    </div>
+                  </CardContent>
+                </Card>
+              );
+            })}
           </div>
-          <span className="text-white font-bold text-lg">FlightApp</span>
         </div>
-        <div className="flex items-center gap-3">
-          {user && (
-            <button
-              onClick={() => router.push('/my-bookings')}
-              className="text-white/80 hover:text-white text-sm transition"
-            >
-              My Bookings
-            </button>
-          )}
-          {user ? (
-            <button
-              onClick={handleLogout}
-              className="bg-white/10 hover:bg-white/20 text-white text-sm
-                         px-4 py-2 rounded-xl transition"
-            >
-              Sign out
-            </button>
-          ) : (
-            <button
-              onClick={() => router.push('/login')}
-              className="bg-white text-blue-700 font-medium text-sm
-                         px-4 py-2 rounded-xl hover:bg-blue-50 transition"
-            >
-              Sign in
-            </button>
-          )}
-        </div>
-      </nav>
 
-      {/* Hero */}
-      <div className="max-w-6xl mx-auto px-6 pt-12 pb-6 text-center">
-        <h1 className="text-4xl md:text-5xl font-bold text-white mb-3">
-          Where do you want to fly?
-        </h1>
-        <p className="text-blue-200 text-lg">
-          Search flights, pick your seat, and take off.
-        </p>
-      </div>
-
-      {/* Search Card */}
-      <div className="max-w-3xl mx-auto px-6 pb-16">
-        <form
-          onSubmit={handleSearch}
-          className="bg-white rounded-2xl shadow-xl p-6 md:p-8"
-        >
-          {/* Origin / Destination */}
-          <div className="flex items-center gap-3 mb-5">
-            <div className="flex-1">
-              <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5">
-                From
-              </label>
-              <select
-                value={origin}
-                onChange={e => setOrigin(e.target.value)}
-                className="w-full px-4 py-3 rounded-xl border border-slate-200 text-slate-900
-                           font-medium focus:outline-none focus:ring-2 focus:ring-blue-500
-                           focus:border-transparent bg-slate-50 transition"
-              >
-                {AIRPORTS.map(a => (
-                  <option key={a.code} value={a.code}>
-                    {a.code} — {a.name}
-                  </option>
-                ))}
-              </select>
+        <Card className="glass-panel">
+          <CardContent className="p-5 sm:p-6 lg:p-7">
+            <div className="mb-6">
+              <p className="text-sm font-semibold text-primary">Flight search</p>
+              <h2 className="mt-1 text-2xl font-semibold">Where are you flying?</h2>
+              <p className="mt-2 text-sm text-muted-foreground">
+                Choose a route and travel date to see available flights.
+              </p>
             </div>
 
-            {/* Swap button */}
-            <button
-              type="button"
-              onClick={handleSwap}
-              className="mt-6 w-10 h-10 flex items-center justify-center rounded-full
-                         border border-slate-200 hover:bg-slate-100 transition flex-shrink-0"
-              aria-label="Swap origin and destination"
-            >
-              <svg className="w-5 h-5 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                  d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
-              </svg>
-            </button>
+            <form onSubmit={handleSearch}>
+              <FieldGroup>
+                <div className="grid gap-3 sm:grid-cols-[1fr_auto_1fr] sm:items-end">
+                  <Field>
+                    <FieldLabel>From</FieldLabel>
+                    <Select value={origin} onValueChange={setOrigin}>
+                      <SelectTrigger className="h-12 w-full bg-background/80">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {AIRPORTS.map((airport) => (
+                          <SelectItem key={airport.code} value={airport.code}>
+                            <span className="font-medium">{airport.code}</span>
+                            <span className="text-muted-foreground">{airport.city}</span>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FieldDescription>{getAirportLabel(origin)}</FieldDescription>
+                  </Field>
 
-            <div className="flex-1">
-              <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5">
-                To
-              </label>
-              <select
-                value={destination}
-                onChange={e => setDestination(e.target.value)}
-                className="w-full px-4 py-3 rounded-xl border border-slate-200 text-slate-900
-                           font-medium focus:outline-none focus:ring-2 focus:ring-blue-500
-                           focus:border-transparent bg-slate-50 transition"
-              >
-                {AIRPORTS.map(a => (
-                  <option key={a.code} value={a.code}>
-                    {a.code} — {a.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-          </div>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon-lg"
+                    className="mb-6 justify-self-start rounded-full bg-background/85 sm:justify-self-center"
+                    onClick={handleSwap}
+                    aria-label="Swap origin and destination"
+                  >
+                    <ArrowLeftRightIcon className="size-4" />
+                  </Button>
 
-          {/* Same airport warning */}
-          {origin === destination && (
-            <p className="text-red-500 text-sm mb-4">
-              Origin and destination cannot be the same.
-            </p>
-          )}
+                  <Field>
+                    <FieldLabel>To</FieldLabel>
+                    <Select value={destination} onValueChange={setDestination}>
+                      <SelectTrigger className="h-12 w-full bg-background/80">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {AIRPORTS.map((airport) => (
+                          <SelectItem key={airport.code} value={airport.code}>
+                            <span className="font-medium">{airport.code}</span>
+                            <span className="text-muted-foreground">{airport.city}</span>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FieldDescription>{getAirportLabel(destination)}</FieldDescription>
+                  </Field>
+                </div>
 
-          {/* Date + Passengers */}
-          <div className="grid grid-cols-2 gap-4 mb-6">
+                {sameAirport && (
+                  <Alert variant="destructive">
+                    <AlertTitle>Choose a different destination</AlertTitle>
+                    <AlertDescription>
+                      Origin and destination cannot be the same airport.
+                    </AlertDescription>
+                  </Alert>
+                )}
+
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <Field>
+                    <FieldLabel>Departure date</FieldLabel>
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          className={cn("h-12 justify-start gap-2 bg-background/80 font-normal")}
+                        >
+                          <CalendarIcon className="size-4 text-muted-foreground" />
+                          {selectedDate.toLocaleDateString("en-IN", {
+                            weekday: "short",
+                            day: "2-digit",
+                            month: "short",
+                            year: "numeric",
+                          })}
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0" align="start">
+                        <Calendar
+                          mode="single"
+                          selected={selectedDate}
+                          onSelect={(value) => {
+                            if (value) setDate(toDateInputValue(value));
+                          }}
+                          disabled={{ before: today }}
+                        />
+                      </PopoverContent>
+                    </Popover>
+                  </Field>
+
+                  <Field>
+                    <FieldLabel>Passengers</FieldLabel>
+                    <Select value={passengers} onValueChange={setPassengers}>
+                      <SelectTrigger className="h-12 w-full bg-background/80">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {[1, 2, 3, 4, 5, 6].map((count) => (
+                          <SelectItem key={count} value={String(count)}>
+                            {count} passenger{count > 1 ? "s" : ""}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </Field>
+                </div>
+
+                <Button type="submit" size="lg" className="h-12 w-full gap-2" disabled={sameAirport}>
+                  <SearchIcon className="size-4" />
+                  Search flights
+                </Button>
+              </FieldGroup>
+            </form>
+
+            <Separator className="my-6" />
+
             <div>
-              <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5">
-                Date
-              </label>
-              <input
-                type="date"
-                required
-                min={today}
-                value={date}
-                onChange={e => setDate(e.target.value)}
-                className="w-full px-4 py-3 rounded-xl border border-slate-200 text-slate-900
-                           focus:outline-none focus:ring-2 focus:ring-blue-500
-                           focus:border-transparent bg-slate-50 transition"
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5">
-                Passengers
-              </label>
-              <select
-                value={passengers}
-                onChange={e => setPassengers(Number(e.target.value))}
-                className="w-full px-4 py-3 rounded-xl border border-slate-200 text-slate-900
-                           font-medium focus:outline-none focus:ring-2 focus:ring-blue-500
-                           focus:border-transparent bg-slate-50 transition"
-              >
-                {[1, 2, 3, 4, 5, 6].map(n => (
-                  <option key={n} value={n}>{n} passenger{n > 1 ? 's' : ''}</option>
+              <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                Popular routes
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {POPULAR_ROUTES.map((route) => (
+                  <Button
+                    key={`${route.from}-${route.to}`}
+                    type="button"
+                    variant="secondary"
+                    size="sm"
+                    className="rounded-full"
+                    onClick={() => {
+                      setOrigin(route.from);
+                      setDestination(route.to);
+                    }}
+                  >
+                    {route.from} to {route.to}
+                  </Button>
                 ))}
-              </select>
+              </div>
             </div>
-          </div>
-
-          <button
-            type="submit"
-            disabled={origin === destination}
-            className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-slate-300
-                       text-white font-semibold py-3.5 rounded-xl text-lg transition"
-          >
-            Search Flights
-          </button>
-        </form>
-
-        {/* Popular routes */}
-        <div className="mt-6 flex flex-wrap justify-center gap-2">
-          {[
-            { from: 'BOM', to: 'DEL' },
-            { from: 'DEL', to: 'BOM' },
-            { from: 'BOM', to: 'BLR' },
-            { from: 'BLR', to: 'BOM' },
-          ].map(route => (
-            <button
-              key={`${route.from}-${route.to}`}
-              onClick={() => {
-                setOrigin(route.from)
-                setDestination(route.to)
-              }}
-              className="bg-white/10 hover:bg-white/20 text-white text-sm
-                         px-4 py-2 rounded-full transition"
-            >
-              {route.from} → {route.to}
-            </button>
-          ))}
-        </div>
-      </div>
+          </CardContent>
+        </Card>
+      </section>
     </main>
-  )
+  );
 }

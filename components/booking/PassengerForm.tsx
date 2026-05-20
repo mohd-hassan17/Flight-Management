@@ -1,195 +1,243 @@
-'use client'
+"use client";
 
-import { useState } from 'react'
-import { formatPrice, formatDateTime } from '@/lib/utils'
-import type { Flight, Seat, PassengerFormData } from '@/types/database'
+import { useState, type ChangeEvent, type FormEvent } from "react";
+import {
+  ArrowLeftIcon,
+  BadgeCheckIcon,
+  Loader2Icon,
+  LockKeyholeIcon,
+  PlaneIcon,
+  UserIcon,
+} from "lucide-react";
+
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Field,
+  FieldDescription,
+  FieldGroup,
+  FieldLabel,
+} from "@/components/ui/field";
+import { Input } from "@/components/ui/input";
+import { Separator } from "@/components/ui/separator";
+import { formatDateTime, formatPrice, toNumber } from "@/lib/utils";
+import type { Flight, PassengerFormData, Seat } from "@/types/database";
 
 interface Props {
-  flight: Flight
-  seat: Seat | null
-  onBack: () => void
-  onSubmit: (data: PassengerFormData) => void
-  submitting: boolean
+  flight: Flight;
+  seat: Seat | null;
+  onBack: () => void;
+  onSubmit: (data: PassengerFormData) => void | Promise<void>;
+  submitting: boolean;
 }
 
 export default function PassengerForm({ flight, seat, onBack, onSubmit, submitting }: Props) {
   const [form, setForm] = useState<PassengerFormData>({
-    full_name: '',
-    passport_no: '',
-    nationality: '',
-    dob: '',
-  })
+    full_name: "",
+    passport_no: "",
+    nationality: "",
+    dob: "",
+  });
 
-  function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
-    setForm(prev => ({ ...prev, [e.target.name]: e.target.value }))
+  function handleChange(event: ChangeEvent<HTMLInputElement>) {
+    setForm((previous) => ({ ...previous, [event.target.name]: event.target.value }));
   }
 
-  function handleSubmit(e: React.FormEvent) {
-    e.preventDefault()
-    onSubmit(form)
+  function handleSubmit(event: FormEvent) {
+    event.preventDefault();
+    onSubmit(form);
   }
 
-  const totalPrice = flight.base_price + (seat?.extra_fee || 0)
+  const basePrice = toNumber(flight.base_price);
+  const seatFee = toNumber(seat?.extra_fee);
+  const totalPrice = basePrice + seatFee;
+
+  if (!seat) {
+    return (
+      <Card className="premium-card">
+        <CardContent className="p-6">
+          <Alert variant="destructive">
+            <AlertTitle>No seat selected</AlertTitle>
+            <AlertDescription>
+              Choose a seat before entering passenger details.
+            </AlertDescription>
+          </Alert>
+          <Button className="mt-5 gap-2" variant="outline" onClick={onBack}>
+            <ArrowLeftIcon className="size-4" />
+            Back to seat map
+          </Button>
+        </CardContent>
+      </Card>
+    );
+  }
 
   return (
-    <div className="grid md:grid-cols-3 gap-6">
+    <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_340px]">
+      <Card className="premium-card">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-xl">
+            <UserIcon className="size-5 text-primary" />
+            Passenger details
+          </CardTitle>
+          <p className="text-sm text-muted-foreground">
+            Enter details exactly as they appear on the passenger passport.
+          </p>
+        </CardHeader>
+        <CardContent>
+          <form onSubmit={handleSubmit}>
+            <FieldGroup>
+              <Field>
+                <FieldLabel>Full name</FieldLabel>
+                <Input
+                  type="text"
+                  name="full_name"
+                  required
+                  value={form.full_name}
+                  onChange={handleChange}
+                  disabled={submitting}
+                  placeholder="As on passport"
+                  className="h-11"
+                  autoComplete="name"
+                />
+              </Field>
 
-      {/* Form */}
-      <div className="md:col-span-2">
-        <div className="bg-white rounded-2xl border border-slate-200 p-6">
-          <h2 className="text-lg font-semibold text-slate-900 mb-5">Passenger details</h2>
+              <Field>
+                <FieldLabel>Passport number</FieldLabel>
+                <Input
+                  type="text"
+                  name="passport_no"
+                  required
+                  value={form.passport_no}
+                  onChange={handleChange}
+                  disabled={submitting}
+                  placeholder="A1234567"
+                  className="h-11 font-mono uppercase"
+                  autoComplete="off"
+                />
+                <FieldDescription className="flex items-center gap-1.5">
+                  <LockKeyholeIcon className="size-3.5" />
+                  Passport number is sent to Supabase and never persisted in local storage.
+                </FieldDescription>
+              </Field>
 
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1.5">
-                Full name <span className="text-red-500">*</span>
-              </label>
-              <input
-                type="text"
-                name="full_name"
-                required
-                value={form.full_name}
-                onChange={handleChange}
-                placeholder="As on passport"
-                className="w-full px-4 py-2.5 rounded-xl border border-slate-200
-                           focus:outline-none focus:ring-2 focus:ring-blue-500
-                           focus:border-transparent text-slate-900 transition"
-              />
-            </div>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <Field>
+                  <FieldLabel>Nationality</FieldLabel>
+                  <Input
+                    type="text"
+                    name="nationality"
+                    required
+                    value={form.nationality}
+                    onChange={handleChange}
+                    disabled={submitting}
+                    placeholder="Indian"
+                    className="h-11"
+                    autoComplete="country-name"
+                  />
+                </Field>
 
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1.5">
-                Passport number <span className="text-red-500">*</span>
-              </label>
-              <input
-                type="text"
-                name="passport_no"
-                required
-                value={form.passport_no}
-                onChange={handleChange}
-                placeholder="e.g. A1234567"
-                className="w-full px-4 py-2.5 rounded-xl border border-slate-200
-                           focus:outline-none focus:ring-2 focus:ring-blue-500
-                           focus:border-transparent text-slate-900 transition font-mono"
-              />
-              <p className="text-xs text-slate-400 mt-1">
-                Stored securely — never saved to your browser.
+                <Field>
+                  <FieldLabel>Date of birth</FieldLabel>
+                  <Input
+                    type="date"
+                    name="dob"
+                    required
+                    max={new Date().toISOString().split("T")[0]}
+                    value={form.dob}
+                    onChange={handleChange}
+                    disabled={submitting}
+                    className="h-11"
+                  />
+                </Field>
+              </div>
+
+              <div className="flex flex-col-reverse gap-3 pt-2 sm:flex-row">
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="h-11 flex-1 gap-2"
+                  onClick={onBack}
+                  disabled={submitting}
+                >
+                  <ArrowLeftIcon className="size-4" />
+                  Back
+                </Button>
+                <Button type="submit" className="h-11 flex-1 gap-2" disabled={submitting}>
+                  {submitting ? <Loader2Icon className="size-4 animate-spin" /> : <BadgeCheckIcon className="size-4" />}
+                  {submitting ? "Confirming" : "Confirm booking"}
+                </Button>
+              </div>
+            </FieldGroup>
+          </form>
+        </CardContent>
+      </Card>
+
+      <aside className="lg:sticky lg:top-24 lg:self-start">
+        <Card className="premium-card">
+          <CardHeader>
+            <CardTitle className="text-base">Booking summary</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-5">
+            <div className="rounded-lg bg-primary/6 p-4">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <p className="text-2xl font-semibold">{flight.origin}</p>
+                  <p className="text-xs text-muted-foreground">Depart</p>
+                </div>
+                <PlaneIcon className="size-5 text-primary" />
+                <div className="text-right">
+                  <p className="text-2xl font-semibold">{flight.destination}</p>
+                  <p className="text-xs text-muted-foreground">Arrive</p>
+                </div>
+              </div>
+              <p className="mt-3 text-sm text-muted-foreground">
+                {formatDateTime(flight.departs_at)}
               </p>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1.5">
-                  Nationality <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  name="nationality"
-                  required
-                  value={form.nationality}
-                  onChange={handleChange}
-                  placeholder="e.g. Indian"
-                  className="w-full px-4 py-2.5 rounded-xl border border-slate-200
-                             focus:outline-none focus:ring-2 focus:ring-blue-500
-                             focus:border-transparent text-slate-900 transition"
-                />
+            <div className="space-y-3 text-sm">
+              <div className="flex justify-between gap-3">
+                <span className="text-muted-foreground">Flight</span>
+                <span className="font-medium">{flight.flight_no}</span>
               </div>
-
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1.5">
-                  Date of birth <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="date"
-                  name="dob"
-                  required
-                  max={new Date().toISOString().split('T')[0]}
-                  value={form.dob}
-                  onChange={handleChange}
-                  className="w-full px-4 py-2.5 rounded-xl border border-slate-200
-                             focus:outline-none focus:ring-2 focus:ring-blue-500
-                             focus:border-transparent text-slate-900 transition"
-                />
+              <div className="flex justify-between gap-3">
+                <span className="text-muted-foreground">Aircraft</span>
+                <span className="font-medium">{flight.aircraft_type}</span>
               </div>
-            </div>
-
-            <div className="flex gap-3 pt-2">
-              <button
-                type="button"
-                onClick={onBack}
-                className="flex-1 border border-slate-200 text-slate-700 font-medium
-                           py-2.5 rounded-xl hover:bg-slate-50 transition"
-              >
-                Back
-              </button>
-              <button
-                type="submit"
-                disabled={submitting}
-                className="flex-1 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400
-                           text-white font-semibold py-2.5 rounded-xl transition"
-              >
-                {submitting ? 'Confirming…' : 'Confirm booking'}
-              </button>
-            </div>
-          </form>
-        </div>
-      </div>
-
-      {/* Summary sidebar */}
-      <div className="space-y-4">
-        <div className="bg-white rounded-2xl border border-slate-200 p-5">
-          <h3 className="text-sm font-semibold text-slate-500 uppercase tracking-wide mb-4">
-            Booking summary
-          </h3>
-
-          <div className="space-y-3 text-sm">
-            <div className="flex justify-between">
-              <span className="text-slate-500">Flight</span>
-              <span className="font-medium text-slate-900">{flight.flight_no}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-slate-500">Route</span>
-              <span className="font-medium text-slate-900">
-                {flight.origin} → {flight.destination}
-              </span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-slate-500">Departure</span>
-              <span className="font-medium text-slate-900">
-                {formatDateTime(flight.departs_at)}
-              </span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-slate-500">Seat</span>
-              <span className="font-medium text-slate-900">
-                {seat?.seat_number}
-                <span className="ml-1.5 text-xs bg-slate-100 text-slate-600
-                                 px-1.5 py-0.5 rounded capitalize">
-                  {seat?.class}
+              <div className="flex justify-between gap-3">
+                <span className="text-muted-foreground">Seat</span>
+                <span className="font-medium">
+                  {seat.seat_number}
+                  <Badge variant="secondary" className="ml-2 capitalize">
+                    {seat.class}
+                  </Badge>
                 </span>
-              </span>
-            </div>
-          </div>
-
-          <div className="border-t border-slate-100 mt-4 pt-4">
-            <div className="flex justify-between text-sm mb-1">
-              <span className="text-slate-500">Base fare</span>
-              <span>{formatPrice(flight.base_price)}</span>
-            </div>
-            {(seat?.extra_fee || 0) > 0 && (
-              <div className="flex justify-between text-sm mb-1">
-                <span className="text-slate-500">Seat fee</span>
-                <span>{formatPrice(seat?.extra_fee || 0)}</span>
               </div>
-            )}
-            <div className="flex justify-between font-bold text-base mt-2 pt-2
-                            border-t border-slate-100">
-              <span>Total</span>
-              <span className="text-blue-600">{formatPrice(totalPrice)}</span>
             </div>
-          </div>
-        </div>
-      </div>
+
+            <Separator />
+
+            <div className="space-y-2 text-sm">
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Base fare</span>
+                <span>{formatPrice(basePrice)}</span>
+              </div>
+              {seatFee > 0 && (
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Seat fee</span>
+                  <span>{formatPrice(seatFee)}</span>
+                </div>
+              )}
+              <div className="flex justify-between border-t pt-3 text-base font-semibold">
+                <span>Total</span>
+                <span className="text-primary">{formatPrice(totalPrice)}</span>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </aside>
     </div>
-  )
+  );
 }

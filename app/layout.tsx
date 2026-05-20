@@ -1,16 +1,20 @@
 import type { Metadata } from "next";
-import { Inter } from 'next/font/google'
-import "./globals.css";
-import { cn } from "@/lib/utils";
-import { TooltipProvider } from "@/components/ui/tooltip"
-import AuthProvider from "@/components/AuthProvider";
+import { Inter } from "next/font/google";
 
-const inter = Inter({ subsets: ['latin'] })
+import "./globals.css";
+
+import AuthProvider from "@/components/AuthProvider";
+import AppShell from "@/components/layout/AppShell";
+import { Toaster } from "@/components/ui/sonner";
+import { TooltipProvider } from "@/components/ui/tooltip";
+import { cn } from "@/lib/utils";
+
+const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: 'FlightApp — Book Flights',
-  description: 'Search, book, and manage your flights.',
-}
+  title: "FlightApp - Book Flights",
+  description: "Search, book, and manage your flights.",
+};
 
 export default function RootLayout({
   children,
@@ -20,13 +24,17 @@ export default function RootLayout({
   return (
     <html
       lang="en"
+      suppressHydrationWarning
       className={cn("h-full", "antialiased", inter.className)}
     >
-      <body className="min-h-full flex flex-col">
+      <body className="min-h-full bg-background text-foreground">
         <AuthProvider>
-        <TooltipProvider>{children}</TooltipProvider>]
+          <TooltipProvider>
+            <AppShell>{children}</AppShell>
+            <Toaster richColors position="top-right" />
+          </TooltipProvider>
         </AuthProvider>
-        </body>
+      </body>
     </html>
   );
 }

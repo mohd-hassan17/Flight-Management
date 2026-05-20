@@ -3,7 +3,14 @@
 // Single source of truth for all DB types.
 // ============================================================
 
-export type FlightStatus = 'scheduled' | 'boarding' | 'departed' | 'arrived' | 'cancelled'
+export type FlightStatus =
+  | 'scheduled'
+  | 'boarding'
+  | 'departed'
+  | 'arrived'
+  | 'cancelled'
+  | 'delayed'
+  | 'completed'
 export type SeatClass = 'economy' | 'business' | 'first'
 export type BookingStatus = 'confirmed' | 'rescheduled' | 'cancelled'
 
@@ -87,6 +94,13 @@ export interface BookingWithDetails extends Booking {
   passengers: Passenger[]
 }
 
+export interface RescheduleFlightOption {
+  flight: Flight
+  seats: Seat[]
+}
+
+export type RescheduleOptionsByBooking = Record<string, RescheduleFlightOption[]>
+
 /** Flight search params used on the search page */
 export interface FlightSearchParams {
   origin: string
@@ -112,3 +126,4 @@ export interface ReserveSeatResult {
   is_available: boolean
   extra_fee: number
 }
+

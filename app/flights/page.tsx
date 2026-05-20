@@ -1,91 +1,129 @@
-import { searchFlights } from '@/lib/flights'
-import FlightCard from '@/components/flights/FlightCard'
-import Link from 'next/link'
-import { formatDate } from '@/lib/utils'
+import Link from "next/link";
+import { ArrowLeftIcon, CalendarDaysIcon, SearchXIcon, UsersIcon } from "lucide-react";
+
+import FlightCard from "@/components/flights/FlightCard";
+import { PageHeader } from "@/components/travel/PageHeader";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import {
+  Empty,
+  EmptyContent,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+} from "@/components/ui/empty";
+import { Separator } from "@/components/ui/separator";
+import { getAirportLabel } from "@/lib/constants";
+import { searchFlights } from "@/lib/flights";
+import { formatDate } from "@/lib/utils";
 
 interface Props {
   searchParams: Promise<{
-    origin?: string
-    destination?: string
-    date?: string
-    passengers?: string
-  }>
+    origin?: string;
+    destination?: string;
+    date?: string;
+    passengers?: string;
+  }>;
 }
 
 export default async function FlightsPage({ searchParams }: Props) {
-  const params = await searchParams
-  const { origin = '', destination = '', date = '', passengers = '1' } = params
+  const params = await searchParams;
+  const { origin = "", destination = "", date = "", passengers = "1" } = params;
+  const passengerCount = Math.max(1, Number(passengers) || 1);
 
   if (!origin || !destination || !date) {
     return (
-      <main className="min-h-screen bg-slate-50 flex items-center justify-center">
-        <div className="text-center">
-          <p className="text-slate-600 mb-4">Missing search parameters.</p>
-          <Link href="/search" className="text-blue-600 hover:underline">Back to search</Link>
-        </div>
+      <main className="mx-auto flex min-h-[70dvh] w-full max-w-3xl items-center px-4 py-10">
+        <Empty className="premium-card border bg-card">
+          <EmptyHeader>
+            <EmptyMedia variant="icon">
+              <SearchXIcon className="size-4" />
+            </EmptyMedia>
+            <EmptyTitle>Search details are missing</EmptyTitle>
+            <EmptyDescription>
+              Start a fresh search so we can find matching flights and fares.
+            </EmptyDescription>
+          </EmptyHeader>
+          <EmptyContent>
+            <Button asChild>
+              <Link href="/search">Back to search</Link>
+            </Button>
+          </EmptyContent>
+        </Empty>
       </main>
-    )
+    );
   }
 
   const flights = await searchFlights({
     origin,
     destination,
     date,
-    passengers: Number(passengers),
-  })
+    passengers: passengerCount,
+  });
 
   return (
-    <main className="min-h-screen bg-slate-50">
-
-      {/* Header */}
-      <div className="bg-blue-600 text-white px-6 py-5">
-        <div className="max-w-3xl mx-auto">
-          <Link href="/search" className="text-blue-200 hover:text-white text-sm mb-3 inline-flex items-center gap-1">
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-            </svg>
-            Modify search
-          </Link>
-          <h1 className="text-2xl font-bold">
-            {origin} → {destination}
-          </h1>
-          <p className="text-blue-200 text-sm mt-1">
-            {formatDate(date + 'T00:00:00')} · {passengers} passenger{Number(passengers) > 1 ? 's' : ''}
-          </p>
-        </div>
-      </div>
-
-      {/* Results */}
-      <div className="max-w-3xl mx-auto px-6 py-6">
-        {flights.length === 0 ? (
-          <div className="text-center py-20">
-            <div className="text-5xl mb-4">✈️</div>
-            <h2 className="text-xl font-semibold text-slate-700 mb-2">No flights found</h2>
-            <p className="text-slate-500 mb-6">
-              No flights from {origin} to {destination} on {formatDate(date + 'T00:00:00')}.
-            </p>
-            <Link
-              href="/search"
-              className="bg-blue-600 text-white px-6 py-2.5 rounded-xl hover:bg-blue-700 transition"
-            >
-              Try another date
+    <main className="mx-auto w-full max-w-5xl px-4 py-8 sm:px-6 lg:px-8">
+      <PageHeader
+        eyebrow="Available flights"
+        title={
+          <>
+            {origin} <span className="text-muted-foreground">to</span> {destination}
+          </>
+        }
+        description={`${getAirportLabel(origin)} to ${getAirportLabel(destination)} on ${formatDate(`${date}T00:00:00`)}`}
+        actions={
+          <Button asChild variant="outline" className="gap-2">
+            <Link href="/search">
+              <ArrowLeftIcon className="size-4" />
+              Modify search
             </Link>
-          </div>
-        ) : (
-          <div className="space-y-4">
-            <p className="text-sm text-slate-500">
-              {flights.length} flight{flights.length > 1 ? 's' : ''} available
-            </p>
-            {flights.map(flight => (
-              <FlightCard
-                key={flight.id}
-                flight={flight}
-                passengers={Number(passengers)}
-              />
-            ))}
-          </div>
-        )}
-      </div>
+          </Button>
+        }
+      />
+
+      <Card className="premium-card mt-6">
+        <CardContent className="flex flex-wrap items-center gap-3 p-4">
+          <Badge variant="secondary" className="gap-1">
+            <CalendarDaysIcon className="size-3" />
+            {formatDate(`${date}T00:00:00`)}
+          </Badge>
+          <Badge variant="secondary" className="gap-1">
+            <UsersIcon className="size-3" />
+            {passengerCount} passenger{passengerCount > 1 ? "s" : ""}
+          </Badge>
+          <Separator orientation="vertical" className="hidden h-5 sm:block" />
+          <p className="text-sm text-muted-foreground">
+            {flights.length} flight{flights.length === 1 ? "" : "s"} available
+          </p>
+        </CardContent>
+      </Card>
+
+      {flights.length === 0 ? (
+        <Empty className="premium-card mt-6 border bg-card py-16">
+          <EmptyHeader>
+            <EmptyMedia variant="icon">
+              <SearchXIcon className="size-4" />
+            </EmptyMedia>
+            <EmptyTitle>No flights found</EmptyTitle>
+            <EmptyDescription>
+              There are no flights on this route for the selected date. Try another travel day or route.
+            </EmptyDescription>
+          </EmptyHeader>
+          <EmptyContent>
+            <Button asChild>
+              <Link href="/search">Search another date</Link>
+            </Button>
+          </EmptyContent>
+        </Empty>
+      ) : (
+        <div className="mt-6 space-y-4">
+          {flights.map((flight) => (
+            <FlightCard key={flight.id} flight={flight} passengers={passengerCount} />
+          ))}
+        </div>
+      )}
     </main>
-  )
+  );
 }
